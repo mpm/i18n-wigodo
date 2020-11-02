@@ -1,5 +1,19 @@
 require 'net/http'
+require 'uri'
 require 'csv'
+
+def fetch_with_redirect(uri_str, limit = 10)
+  raise ArgumentError, 'HTTP redirect too deep' if limit == 0
+
+  url = URI.parse(uri_str)
+  response = Net::HTTP.start(url.host, url.port, use_ssl: true) { |http| http.get(url.path + (url.query ? "?#{url.query}" : "")) }
+  case response
+  when Net::HTTPRedirection then fetch_with_redirect(response['location'], limit - 1)
+  when Net::HTTPSuccess     then response
+  else
+    response.error!
+  end
+end
 
 namespace :wigodo do
   desc 'Import translations from Google Drive'
@@ -17,39 +31,39 @@ namespace :wigodo do
             "https://docs.google.com/spreadsheets/d/1en5BoKGaAqO9_BRSQ9CQKkvwrYQWNBUPjgSzxyn83Pc/edit#gid=0")
     end
 
-    Net::HTTP.start("docs.google.com", 443, use_ssl: true) do |http|
-      resp = http.get("/spreadsheets/d/#{document_id}/export?format=csv")
-      #puts resp.body.force_encoding('UTF-8')
-      rows = CSV.parse(resp.body.force_encoding('UTF-8'))
-      locales = rows.first[2..-1]
-      default_locale_index = 2
+    resp = fetch_with_redirect("https://docs.google.com/spreadsheets/d/#{document_id}/export?format=csv")
 
-      hash = {}
-      locales.each do |locale|
-        locale_index = locales.find_index(locale) + 2
-        hash[locale] = {}
-        rows[1..-1].each do |cols|
-          if cols.first.present?
-            last_item = hash[locale]
-            keys = cols.first.split('.')
-            keys[0..-2].each do |key|
-              last_item = last_item[key] ||= {}
-            end
-            content = cols[locale_index]
-            default_content = cols[default_locale_index]
-            last_item[keys[-1]] = content.present? ? content : default_content
+    # puts resp.body.force_encoding('UTF-8')
+    rows = CSV.parse(resp.body.force_encoding('UTF-8'))
+    locales = rows.first[2..-1]
+    default_locale_index = 2
+
+    hash = {}
+    locales.each do |locale|
+      locale_index = locales.find_index(locale) + 2
+      hash[locale] = {}
+      rows[1..-1].each do |cols|
+        if cols.first.present?
+          last_item = hash[locale]
+          keys = cols.first.split('.')
+          keys[0..-2].each do |key|
+            last_item = last_item[key] ||= {}
           end
+          content = cols[locale_index]
+          default_content = cols[default_locale_index]
+          last_item[keys[-1]] = content.present? ? content : default_content
         end
-
-        filename = "#{Rails.root}/config/locales/remote.#{locale}.yml"
-        print "generating #{filename}..."
-        File.open(filename, "w") do |f|
-          f.write({locale => hash[locale]}.to_yaml)
-        end
-        puts "OK"
       end
+
+      filename = "#{Rails.root}/config/locales/remote.#{locale}.yml"
+      print "generating #{filename}..."
+      File.open(filename, "w") do |f|
+        f.write({locale => hash[locale]}.to_yaml)
+      end
+      puts "OK"
     end
   end
+
   desc 'Output a CSV style file with existing translations (to be imported into Google Spreadsheets)'
   task export: :environment do
     require 'yaml'
