@@ -35,9 +35,63 @@ Or install it yourself as:
 
     $ gem install i18n-wigodo
 
+## Configuration
+
+The spreadsheet file is either identified by the URL or directly via the
+`document_id`.
+
+There is an [example file](https://docs.google.com/spreadsheets/d/1en5BoKGaAqO9_BRSQ9CQKkvwrYQWNBUPjgSzxyn83Pc/edit?gid=0#gid=0) showing how the columns should be laid out.
+The `document_id` of this file is the part between `d/` and `/edit`: `1en5BoKGaAqO9_BRSQ9CQKkvwrYQWNBUPjgSzxyn83Pc`.
+
+You have two options to set this:
+
+### Initializer (recommended)
+
+After the gem is loaded from a Rails app, you can use the install
+generator to create the initializer file:
+
+```sh
+bin/rails wigodo:install --url="https://docs.google.com/spreadsheets/d/1en5BoKGaAqO9_BRSQ9CQKkvwrYQWNBUPjgSzxyn83Pc/edit?gid=0#gid=0"
+```
+
+This will create `config/initializers/wigodo.rb` inside your Rails
+project and store the URL to the translations document.
+The `--url` parameter is optional, though.
+
+Alternatively, create the initializer file manually:
+
+Add `config/initializers/wigodo.rb`
+
+```Ruby
+I18nWigodo.configure do |config|
+  config.document_url = "https://docs.google.com/spreadsheets/d/1en5BoKGaAqO9_BRSQ9CQKkvwrYQWNBUPjgSzxyn83Pc/edit?gid=0#gid=0"
+
+  # Or just provide the document_id
+  # config.document_id = "1en5BoKGaAqO9_BRSQ9CQKkvwrYQWNBUPjgSzxyn83Pc"
+end
+```
+
+### YAML files (deprecated)
+
+Rails will read the config from `config/credentials.yml` or
+`config/secrets.yml`
+
+Add a key `wigodo_doc_id` containing the `document_id`.
+Just storing the URL directly is not supported with this method.
+
+Example:
+
+```yaml
+wigodo_doc_id: 1en5BoKGaAqO9_BRSQ9CQKkvwrYQWNBUPjgSzxyn83Pc
+```
+
 ## Usage
 
-TODO: Write usage instructions here
+### 
+
+```sh
+rake wigodo:fetch
+```
 
 ## Development
 

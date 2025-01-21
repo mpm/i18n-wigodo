@@ -17,18 +17,24 @@ end
 
 namespace :wigodo do
   desc 'Import translations from Google Drive'
-  task :fetch do
-    document_id = Rails.application.secrets.wigodo_doc_id || Rails.application.credentials.wigodo_doc_id
+  task fetch: :environment do
+    document_id = I18nWigodo.configuration.get_document_id
 
     unless document_id
-      abort("i18n-wigodo: wigodo_doc_id not set!\n" +
-            "Add the id of your Google Doc spreadsheet to\n" +
-            "config/credentials.yml (Rails < 5.2: config/secrets.yml).\n" +
-            "Use wigodo_doc_id as key.\n\n" +
-            "Example:\n\n" +
-            "wigodo_doc_id: 1en5BoKGaAqO9_BRSQ9CQKkvwrYQWNBUPjgSzxyn83Pc\n\n" +
-            "(This is the id of a sample document your can check out here:\n" +
-            "https://docs.google.com/spreadsheets/d/1en5BoKGaAqO9_BRSQ9CQKkvwrYQWNBUPjgSzxyn83Pc/edit#gid=0")
+      abort(<<~HELP
+              i18n-wigodo: document_url not set!
+
+              Get the URL to your spreadsheet.
+              Here is an example file:
+              https://docs.google.com/spreadsheets/d/1en5BoKGaAqO9_BRSQ9CQKkvwrYQWNBUPjgSzxyn83Pc/edit?gid=0#gid=0
+
+              Then, create an initializer in config/initializers/wigodo.rb like so:
+
+              I18nWigodo.configure do |config|
+                config.document_url = "(url to your Google Doc spreadsheet)"
+              end
+            HELP
+           )
     end
 
     resp = fetch_with_redirect("https://docs.google.com/spreadsheets/d/#{document_id}/export?format=csv")
